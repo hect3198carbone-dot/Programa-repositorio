@@ -1,0 +1,196 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reparaciones Carbone IT</title>
+  <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white font-sans min-h-screen p-8">
+
+  <div class="max-w-4xl mx-auto">
+    
+    <!-- ENCABEZADO -->
+    <header class="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
+      <div>
+        <h1 class="text-xl font-bold tracking-wide">Reparaciones Carbone IT</h1>
+        <p class="text-sm text-slate-400">Panel de control de servicio técnico</p>
+      </div>
+      <div class="flex items-center gap-2 bg-blue-950/50 border border-blue-500/30 px-3 py-1 rounded-full text-xs text-blue-400">
+        <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+        Contadores Automáticos Activos
+      </div>
+    </header>
+
+    <!-- --- NUEVO: BARRA SUPERIOR DE ESTADÍSTICAS --- -->
+    <section class="grid grid-cols-3 gap-4 mb-8">
+      <!-- Contador Pendientes -->
+      <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-xl text-center md:text-left">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pendientes</p>
+        <p id="stat-pendientes" class="text-2xl font-bold text-rose-400 mt-1">0</p>
+      </div>
+      <!-- Contador En Proceso -->
+      <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-xl text-center md:text-left">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">En Proceso</p>
+        <p id="stat-proceso" class="text-2xl font-bold text-amber-400 mt-1">0</p>
+      </div>
+      <!-- Contador Completadas -->
+      <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-xl text-center md:text-left">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completadas</p>
+        <p id="stat-completadas" class="text-2xl font-bold text-emerald-400 mt-1">0</p>
+      </div>
+    </section>
+
+    <!-- FORMULARIO -->
+    <section class="bg-slate-900/40 border border-slate-800 rounded-xl p-5 mb-8">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Registrar Nueva Reparación</h2>
+      <form id="formulario-reparacion" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="md:col-span-2">
+          <label class="block text-xs text-slate-400 mb-1">Cliente / Locación</label>
+          <input type="text" id="form-cliente" required placeholder="Ej. Picking Milla 8" 
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Tipo de Equipo</label>
+          <select id="form-tipo" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+            <option value="Laptop">Laptop</option>
+            <option value="Computadora">Computadora</option>
+            <option value="Impresora">Impresora</option>
+            <option value="Servidor">Servidor</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm py-2 px-4 rounded-lg transition-colors">
+            + Agregar Orden
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- BARRA DE BÚSQUEDA -->
+    <div class="mb-6">
+      <input type="text" id="buscador" placeholder="Buscar por cliente o ID..." 
+             class="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2.5 text-sm text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+    </div>
+
+    <!-- LISTA DE REPARACIONES -->
+    <main id="lista-reparaciones" class="space-y-3">
+      <!-- Las tarjetas se generan aquí -->
+    </main>
+
+  </div>
+
+  <script>
+    let reparaciones = JSON.parse(localStorage.getItem('reparaciones_db')) || [
+      { id: "REP-20260519-INI", tipo: "Laptop", cliente: "Cliente de Prueba", tiempo: "Ahora mismo", estado: "Pendiente" }
+    ];
+
+    const contenedor = document.getElementById('lista-reparaciones');
+    const buscador = document.getElementById('buscador');
+    const formulario = document.getElementById('formulario-reparacion');
+
+    // --- NUEVO: FUNCIÓN PARA ACTUALIZAR LAS ESTADÍSTICAS ---
+    function actualizarEstadisticas() {
+      // Filtramos y contamos cuántas órdenes corresponden a cada estado
+      const pendientes = reparaciones.filter(r => r.estado === "Pendiente").length;
+      const proceso = reparaciones.filter(r => r.estado === "En proceso").length;
+      const completadas = reparaciones.filter(r => r.estado === "Completado").length;
+
+      // Inyectamos los números en los bloques de la barra superior
+      document.getElementById('stat-pendientes').innerText = pendientes;
+      document.getElementById('stat-proceso').innerText = proceso;
+      document.getElementById('stat-completadas').innerText = completadas;
+    }
+
+    function renderizarTarjetas(lista) {
+      contenedor.innerHTML = ""; 
+      
+      if (lista.length === 0) {
+        contenedor.innerHTML = `<p class="text-center text-slate-500 text-sm py-8">No se encontraron órdenes registradas.</p>`;
+        return;
+      }
+      
+      lista.forEach(rep => {
+        let colorEstado = "bg-rose-500/10 border-rose-500/30 text-rose-400";
+        if (rep.estado === "En proceso") colorEstado = "bg-amber-500/10 border-amber-500/30 text-amber-400";
+        if (rep.estado === "Completado") colorEstado = "bg-emerald-500/10 border-emerald-500/30 text-emerald-400";
+
+        const tarjeta = `
+          <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 flex justify-between items-center hover:border-slate-700 transition-all">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-3">
+                <span class="text-blue-400 font-mono text-sm font-semibold tracking-wider">${rep.id}</span>
+                <span class="bg-slate-800 text-slate-300 text-xs px-2 py-0.5 rounded font-medium">${rep.tipo}</span>
+              </div>
+              <h2 class="text-slate-200 font-medium text-base">${rep.cliente}</h2>
+            </div>
+            
+            <div class="text-right space-y-2">
+              <span class="text-xs text-slate-500 block">${rep.tiempo}</span>
+              <select onchange="cambiarEstado('${rep.id}', this.value)" 
+                      class="border text-xs px-2 py-1 rounded-md font-medium cursor-pointer focus:outline-none ${colorEstado}">
+                <option value="Pendiente" ${rep.estado === 'Pendiente' ? 'selected' : ''}>❌ Pendiente</option>
+                <option value="En proceso" ${rep.estado === 'En proceso' ? 'selected' : ''}>⏳ En proceso</option>
+                <option value="Completado" ${rep.estado === 'Completado' ? 'selected' : ''}>✅ Completado</option>
+              </select>
+            </div>
+          </div>
+        `;
+        contenedor.innerHTML += tarjeta;
+      });
+
+      // Cada vez que se dibuja la pantalla, recalculamos los totales superiores
+      actualizarEstadisticas();
+    }
+
+    function cambiarEstado(id, nuevoEstado) {
+      reparaciones = reparaciones.map(rep => {
+        if (rep.id === id) return { ...rep, estado: nuevoEstado };
+        return rep;
+      });
+
+      localStorage.setItem('reparaciones_db', JSON.stringify(reparaciones));
+      renderizarTarjetas(reparaciones);
+    }
+
+    function generarID() {
+      const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let codigoAleatorio = "";
+      for (let i = 0; i < 3; i++) {
+        codigoAleatorio += letras.charAt(Math.floor(Math.random() * letras.length));
+      }
+      return `REP-20260519-${codigoAleatorio}`;
+    }
+
+    formulario.addEventListener('submit', (e) => {
+      e.preventDefault(); 
+      const nuevoCliente = document.getElementById('form-cliente').value;
+      const nuevoTipo = document.getElementById('form-tipo').value;
+
+      const nuevaOrden = {
+        id: generarID(),
+        tipo: nuevoTipo,
+        cliente: nuevoCliente,
+        tiempo: "Registrado",
+        estado: "Pendiente"
+      };
+
+      reparaciones.unshift(nuevaOrden);
+      localStorage.setItem('reparaciones_db', JSON.stringify(reparaciones));
+      renderizarTarjetas(reparaciones);
+      formulario.reset();
+    });
+
+    buscador.addEventListener('input', (e) => {
+      const texto = e.target.value.toLowerCase();
+      const filtradas = reparaciones.filter(rep => {
+        return rep.cliente.toLowerCase().includes(texto) || rep.id.toLowerCase().includes(texto);
+      });
+      renderizarTarjetas(filtradas);
+    });
+
+    renderizarTarjetas(reparaciones);
+  </script>
+</body>
+</html>
